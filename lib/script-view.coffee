@@ -4,6 +4,7 @@ CodeContext = require './code-context'
 HeaderView = require './header-view'
 ScriptOptionsView = require './script-options-view'
 AnsiFilter = require 'ansi-to-html'
+pstree = require 'ps-tree'
 _ = require 'underscore'
 
 # Runs a portion of a script through an interpreter and displays it line by line
@@ -260,8 +261,16 @@ class ScriptView extends View
     if @bufferedProcess?
       @display 'stdout', '^C'
       @headerView.setStatus 'kill'
-      @bufferedProcess.kill()
-      @bufferedProcess = null
+      pid = @bufferedProcess.process?.pid
+      if pid?
+          pstree pid, (err, children) =>
+            for ch in children
+              try
+                  process.kill(parseInt(ch.PID, 10), 'SIGTERM')
+              catch err
+                  console.log "Kill child #{ch.PID}: #{err}"
+            @bufferedProcess.kill()
+            @bufferedProcess = null
 
   display: (css, line) ->
     if atom.config.get('script.escapeConsoleOutput')
